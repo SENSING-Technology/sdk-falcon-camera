@@ -6,6 +6,12 @@ pybind 需要使用 cmake/g++(需支持 C++11) 编译，面向的 python 版本�
 sudo apt-get install python cmake g++ -y
 ```
 
+安装依赖:
+```shell
+sudo apt-get update
+sudo apt-get install libusb-1.0-0-dev libusb-dev libyaml-cpp-dev libyaml-dev libyaml-cpp0.6 gcc g++ make libopencv-dev libjsoncpp-dev libeigen3-dev libjpeg-turbo8-dev python3-sympy
+```
+
 选择任意目录，clone pybind 仓库:
 
 ```
