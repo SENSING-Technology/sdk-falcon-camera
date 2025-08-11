@@ -1,0 +1,122 @@
+Changes:
+Api ver:3.5.0
+1.Add other stream callback to retrieve other type data packet
+2.get camera param by parse file from camera,reduce time to retrieve camera
+param
+
+Api ver:3.4.4
+1.Add set_rgb_exposure cpp interface to set rgb set rgb sensor's exposure
+2.Add get_rgb_exposure cpp interface to get rgb set rgb sensor's exposure
+3.Add getrgbexposure console cmd to test get_rgb_exposure interface
+4.Add setrgbexposure console cmd to test set_rgb_exposure interface
+
+Api ver:3.3.4
+1.Add get_imu_externalref cpp interface to get imu external reference
+2.Add test code in example/cpp.cpp,include getimuexternref console cmd to test
+get_imu_externalref interface
+3.Remove some unnecessary printf
+4.Add get_imu_internalref cpp interface to get imu internal reference
+5.Add test code in example/cpp.cpp,include getimuref console cmd to test
+get_imu_internalref interface
+
+Api ver:3.6.2
+1.采用libusb异步接口读取相机数据，降低cpu占用
+2.增加eventcallback回调函数来捕捉可能的相机usb拔出或者相机重启事件
+3.修复内存泄漏
+4.关闭Usb口前不再停止相机侧pipeline
+5.修改相机配置时，可以保存配置后发送重启相机指令，然后重新连接相机使配置生效
+6.示例代码展示如果配置不需要修改时，不用修改相机端配置，直接读取数据
+7.增加飞点过滤接口，修改置信度接口参数，使得和其他相似接口风格一致
+8.增加set_timesynccycle接口用来进行时钟同步，替代之前的set_globaltime(已经弃用)
+
+新增对时设置：
+NVPTL_RESULT nvpfm::set_timesynccycle(bool enable,int seconds)
+返回：NVPTL_OK,成功，其他，失败
+enable:true，启用内置对时机制，false,禁用内置对时机制
+seconds:推荐5，对时周期，设置为5时表示每5秒发一次上位机时间给相机来进行同步，越小表示对时越频繁，越大表示对时越稀疏
+
+接口参数变更:
+    NVPTL_RESULT get_confidence(bool &status, float &sigma);---->  NVPTL_RESULT get_confidence(s_nvpfm_confidence* pdata);//获取置信度配置，返回NVPTL_OK表示成功，其他表示失败
+    NVPTL_RESULT set_confidence(bool enable, float sigma);------>  NVPTL_RESULT set_confidence(s_nvpfm_confidence* pdata);//设置置信度，返回NVPTL_OK表示成功，其他表示失败
+
+ 	/**@struct s_nvpfm_confidence
+	 * @brief confidence filter config struct \n
+	 * define post process of depth in camera,confidence filter param
+	 */
+	typedef struct
+	{
+		unsigned int enable; /**< 0-禁用置信度 1-启用置信度 */
+		float sigma;		 /**< 置信度 sigma 值,[0.0-1.0],推荐值: 0.005 */
+	} s_nvpfm_confidence;
+
+增加smear filter(飞点过滤)
+NVPTL_RESULT get_smear_filter(s_nvpfm_smear_filter *tmpparam);//获取飞点过滤配置，返回NVPTL_OK表示成功，其他表示失败
+NVPTL_RESULT set_smear_filter(s_nvpfm_smear_filter* pdata);//设置飞点过滤，返回NVPTL_OK表示成功，其他表示失败
+
+    typedef struct
+    {
+        int enable; /**< 0-禁用飞点过滤 1-启用飞点过滤 */
+        int winSize;//推荐值 7,按实际效果调整
+        float dispThreshold;//推荐值 0.86,按实际效果调整
+    }s_nvpfm_smear_filter;
+
+version 3.6.3
+1.减小transfer buffer,从128k减小到64k,这样在某些linux内核版本就不会导致性能下降
+2.加入custom测试用例
+3.修复多线程调用set/get出错的问题
+
+version 3.6.4
+1.add get/set reboot time interface
+
+version 3.6.5
+1.修复概率性调用get_camera_param失败的问题
+
+version 3.6.6
+1.fix get imu extern/intern ref fail after upgrade from older version firmware
+
+version 3.6.7
+1.add is_encrypt_firmware_file interface to determine firmware file is or not encrypt
+2.add code to example/upgrade.cpp to judge the firmware file is encrypt or not and determine will or not upgrade
+
+version 3.6.8
+1.add get_logfileid interface to get camera log id
+2.add code to example/cpp.cpp to download camera logs and camera log idj
+
+version 3.6.9
+1.add get/set efuse_user interface
+
+version 3.6.10
+1.reenable USEEXTRATHREAD macro to enable friendly user layer development
+2.change example/cpp.cpp to disable bad_filter and enable 30 fps by default
+
+version 3.6.11
+1.support more vid/pid
+
+version 3.6.12
+1.return result of set_efuse
+2.reduce time of open usb from 1 seconds to 66ms
+
+version 3.6.13
+1.add milliseconds to log
+2.example/cpp.cpp中写key时增加has key no ciper的判断
+
+version 3.6.14
+1.fix start_othercallback to enable receive user data from camera
+
+version 3.6.15
+1.add support for multiple vid/pid
+
+version 3.6.16
+1.add nvfpm_savergb2jpg interface to save rgb frame to jpeg file
+
+version 3.6.17
+1.fix support for net interface falcon camera
+
+version 3.6.18
+1.fix repeat call rgbcallback when enable USEEXTRATHREAD MACRO
+
+version 3.6.19
+1.merge forviewer sdk-falcon-camera
+
+version 3.6.20
+1.merge multiupgrade to sdk-falcon-camera

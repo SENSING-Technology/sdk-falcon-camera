@@ -1,0 +1,404 @@
+c++接口描述：
+1.初始化
+原型：int nvpfm_init(const char* logfile, int maxlogfilesize);
+作用：sdk初始化,在所有sdk的api函数调用之前调用,应用程序只需要调用一次,内部会初始化平台相关的资源
+参数：logfile日志文件路径,maxlogfilesize,日志文件最大大小
+返回值：0
+
+2.去初始化
+原型：void nvpfm_deinit();
+作用：sdk去初始化,在应用程序退出时调用,所有sdk的api函数调用之后调用,应用程序只需要调用一次,内部会释放平台相关的资源
+参数：无
+返回值：无
+
+3.枚举相机设备
+原型：NVPTL_RESULT nvptl_enum_sync(int *ptotal, NVPTL_DEVICE_INFO **ppdevices);
+作用：枚举连接到系统的所有相机
+参数：ptotal,指向返回的枚举到的相机数量,ppdevices,指向一个链表头指针,链表存储枚举到的相机信息,包括种类、接口描述字符串等
+返回值：NVPTL_OK表示成功,其他表示失败
+
+4.释放相机设备链表
+原型：void nvptl_freedevices(NVPTL_DEVICE_INFO *thedevice);
+作用：释放枚举接口分配的相机设备链表
+参数：thedevice,链表头指针
+返回值：无
+
+5.创建相机实例
+原型：nvpfm::nvpfm(NVPTL_DEVICE_INFO* pinfo,EVENTCALLBACK callback,void* userdata);
+作用：创建相机实例
+参数：pinfo,指向枚举到的相机信息,callback,事件处理回调函数,相机重启或被拔出或者通讯异常中断时被调用,userdata,传入事件回调函数的用户指针,后续也会传入帧数据回调
+返回值：nvpfm类型指针
+示例代码：nvpfm* pfm=new nvpfm(pinfo,NULL,NULL);
+
+6.获取设备信息
+原型：NVPTL_RESULT nvpfm::get_devinfo(s_nvpfm_dev_info* pinfo);
+作用：获取相机设备信息,由结构体s_nvpfm_dev_info描述,参见nvpfm.h
+参数：pinfo,指向相机信息结构体
+返回值：NVPTL_OK表示成功,其他表示失败
+示例代码：
+s_nvpfm_dev_info info;
+if(NVPTL_OK==pfm->get_devinnfo(&info)){
+    printf("get device info ok!\n");
+}else{
+    printf("fail to get device info!\n");
+}
+
+7.获取相机内外参数
+原型：NVPTL_RESULT nvpfm::get_camera_param(s_nvpfm_camera_param* param);
+作用：获取相机内外参数,由结构体s_nvpfm_camera_param描述,参见nvpfm.h
+参数：param,指向相机内外参数结构体
+返回值：NVPTL_OK表示成功,其他表示失败
+示例代码：
+s_nvpfm_camera_param info;
+if(NVPTL_OK==pfm->get_camera_param(&info)){
+    printf("get camera param ok!\n");
+}else{
+    printf("fail to get camera param!\n");
+}
+
+8.获取深度帧
+原型：NVPTL_RESULT nvpfm::start_depth(FRAMECALLBACK depthcallback);
+作用：设置深度帧数据回调函数
+参数：
+depthcallback,深度帧数据回调函数,
+原型typedef void(*FRAMECALLBACK)(void *data, void *userdata);
+data指向帧数据头,userdata为new nvpfm时提供的userdata指针,参考example/cpp.cpp中的示例代码
+
+返回值：NVPTL_OK表示成功,其他表示失败
+注意,如果相机配置有两路深度数据,那么两路深度的帧都会在回调中获取到,需要根据帧数据的sub_type来分辨,类型为NVPFM_IMAGE_TYPE,参见nvpfm.h
+
+9.获取RGB帧
+原型：NVPTL_RESULT nvpfm::start_rgb(FRAMECALLBACK rgbcallback);
+作用：设置rgb帧数据回调函数
+参数：
+rgbcallback,rgb帧数据回调函数,
+原型typedef void(*FRAMECALLBACK)(void *data, void *userdata);
+data指向帧数据头,userdata为new nvpfm时提供的userdata指针,参考example/cpp.cpp中的示例代码
+注意,rgb回调进入的帧的sub_type为IMAGE_CHANNEL2_ORIGNAL或者IMAGE_CHANNEL2_CALIBRATED,参见nvpfm.h
+根据相机配置的不同,可能为第二路深度的左图
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+10.获取左目帧
+原型：NVPTL_RESULT nvpfm::start_leftir(FRAMECALLBACK leftircallback);
+作用：设置leftir帧数据回调函数
+参数：
+leftircallback,leftir帧数据回调函数,
+原型typedef void(*FRAMECALLBACK)(void *data, void *userdata);
+data指向帧数据头,userdata为new nvpfm时提供的userdata指针,参考example/cpp.cpp中的示例代码
+
+注意,leftir回调进入的帧的sub_type为IMAGE_CHANNEL0_ORIGNAL或者IMAGE_CHANNEL0_CALIBRATED,参见nvpfm.h
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+11.获取右目帧
+原型：NVPTL_RESULT nvpfm::start_rightir(FRAMECALLBACK rightircallback);
+作用：设置rightir帧数据回调函数
+参数：
+rightircallback,rightir帧数据回调函数,
+原型typedef void(*FRAMECALLBACK)(void *data, void *userdata);
+data指向帧数据头,userdata为new nvpfm时提供的userdata指针,参考example/cpp.cpp中的示例代码
+
+注意,rightir回调进入的帧的sub_type为IMAGE_CHANNEL1_ORIGNAL或者IMAGE_CHANNEL1_CALIBRATED,参见nvpfm.h
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+12.获取imu帧
+原型：NVPTL_RESULT nvpfm::start_imu(FRAMECALLBACK imucallback);
+作用：设置imu帧数据回调函数
+参数：
+imucallback,imu帧数据回调函数,
+原型typedef void(*FRAMECALLBACK)(void *data, void *userdata);
+data指向帧数据头,userdata为new nvpfm时提供的userdata指针,参考example/cpp.cpp中的示例代码
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+13.获取ir曝光参数
+原型：NVPTL_RESULT nvpfm::get_irexposure( s_nvpfm_get_sensor_exposure_ret* pret);
+作用：获取左右目的曝光参数
+参数：
+pret,s_nvpfm_get_sensor_exposure_ret类型指针,pret->ret==0时pret->exposure有效
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+14.设置ir曝光参数
+原型：NVPTL_RESULT nvpfm::set_irexposure(s_nvpfm_set_sensor_exposure* pdata);
+作用：设置左右目的曝光参数
+参数：
+pdata,s_nvpfm_set_sensor_exposure类型指针,注意,一般先获取曝光参数后再设置,
+s_nvpfm_set_sensor_exposure的channel一般为CHANNEL0/CHANNEL1
+s_nvpfm_set_sensor_exposure的config一般来自get_irexposure获取到的s_nvpfm_get_sensor_exposure_ret的exposure
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+15.获取rgb曝光参数
+原型：NVPTL_RESULT nvpfm::get_rgbexposure( s_nvpfm_get_sensor_exposure_ret* pret);
+作用：获取左右目的曝光参数
+参数：
+pret,s_nvpfm_get_sensor_exposure_ret类型指针,pret->ret==0时pret->exposure有效
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+16.设置rgb曝光参数
+原型：NVPTL_RESULT nvpfm::set_rgbexposure(s_nvpfm_set_sensor_exposure* pdata);
+作用：设置左右目的曝光参数
+参数：
+pdata,s_nvpfm_set_sensor_exposure类型指针,注意,一般先获取曝光参数后再设置,
+s_nvpfm_set_sensor_exposure的channel一般为CHANNEL2
+s_nvpfm_set_sensor_exposure的config一般来自get_irexposure获取到的s_nvpfm_get_sensor_exposure_ret的exposure
+
+返回值：NVPTL_OK表示成功,其他表示失败
+
+17.发送相机重启指令
+原型：void nvpfm::send_reboot();
+作用：发送相机重启系统指令,相机收到后会自动重启相机的系统
+参数：无
+返回值：无
+注意,一般这个函数在eventcallback中被调用,参见example/cpp.cpp中的示范
+
+18.获取sensor配置
+原型：NVPTL_RESULT nvpfm::get_sensorcfg(s_nvpfm_get_sensor_config_ret* pcfg);
+作用：获取相机内sensor的配置信息
+参数：pcfg,指向s_nvpfm_get_sensor_config_ret类型的指针
+返回值：NVPTL_OK表示成功,否则表示失败,返回NVPTL_OK时,如果pcfg->ret==0,则pcfg->config有效,pcfg->config中包含各个sensor的原生分辨率,对应的isp输出分辨率和帧率
+
+19.设置sensor配置
+原型：NVPTL_RESULT nvpfm::set_sensorcfg(s_nvpfm_app_sensor_config* pdata);
+作用：设置相机内sensor的配置,一般用来设置分辨率、帧率等
+参数：pdata,指向s_nvpfm_app_sensor_config类型的指针
+返回值：NVPTL_OK表示成功,否则表示失败
+注意,一般先调用get_sensorcfg,然后修改收到的数据后再调用本函数
+成功执行后会导致相机重启,重启过程在eventcallback中被触发,代码调用send_reboot后发生相机重启,参考example/cpp.cpp中的示例代码
+
+20.获取speckle后处理参数
+原型：NVPTL_RESULT nvpfm::get_speckle(s_nvpfm_speckle_filter *pdata);
+作用：获取speckle后处理参数
+参数：pdata,指向s_nvpfm_speckle_filter类型的指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+21.设置speckle后处理参数
+原型：NVPTL_RESULT nvpfm::set_speckle(s_nvpfm_set_speckle_filter *pdata);
+作用：设置speckle后处理参数
+参数：pdata,指向s_nvpfm_set_speckle_filter类型的指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+22.获取运行配置
+原型：NVPTL_RESULT nvpfm::get_runcfg(s_nvpfm_get_app_run_config_ret* pdata);
+作用：获取运行配置
+参数：pdata,指向s_nvpfm_get_app_run_config_ret类型的指针
+返回值：NVPTL_OK表示成功,否则表示失败,返回NVPTL_OK时,如果pdata->ret==0,则pdata->config有效
+说明：运行配置包含当前相机的模式信息,如深度模式、升级模式、工厂模式等
+
+23.获取其他数据帧
+原型：NVPTL_RESULT nvpfm::start_other(FRAMECALLBACK callback);
+作用：设置其他数据帧回调函数
+参数：
+callback,其他数据帧回调函数,
+原型typedef void(*FRAMECALLBACK)(void *data, void *userdata);
+data指向帧数据头,userdata为new nvpfm时提供的userdata指针,参考example/cpp.cpp中的示例代码
+
+返回值：NVPTL_OK表示成功,其他表示失败
+说明：其他数据帧包含相机日志、相机ai模型推理结果等
+
+24.保存配置
+原型：NVPTL_RESULT nvpfm::save_config();
+作用：保存相机当前配置,当相机重启后仍然保留之前保存的配置
+参数：无
+返回值：NVPTL_OK表示成功,其他表示失败
+
+25.设置相机运行配置
+原型：NVPTL_RESULT nvpfm::set_runcfg(s_nvpfm_app_run_config* pdata);
+作用：设置相机运行配置
+参数：pdata,指向s_nvpfm_app_run_config类型指针
+返回值：NVPTL_OK表示成功,其他表示失败
+注意：建议调用本函数前先调用get_runcfg获取配置,然后根据需要修改,然后再调用本函数
+
+26.升级相机系统固件
+原型：NVPTL_RESULT nvpfm::upgrade(std::string localfirmwarefilepath,UPGRADECALLBACK upgradecallback,void* userdata);
+作用：上传固件到相机,然后相机会自动重启并自动烧录上传的固件,在此过程中不要拔掉相机的usb线
+参数：localfirmwarefilepath,本地固件文件路径,upgradecallback,回调函数,固件被分成小块发送到相机,每个小块传输成功后会调用此回调函数
+userdata,用户指针,upgradecallback中会得到这个指针
+返回值：NVPTL_OK表示成功,其他表示失败
+注意：调用本函数前需要先调用set_runcfg,确保相机进入upgrade模式
+
+27.上传文件到相机
+原型：NVPTL_RESULT nvpfm::uploadfile(std::string localfilepath, std::string remotefilepath);
+作用：上传文件到相机
+参数：localfilepath,本地文件路径,remotefilepath,相机端路径,包含文件名
+返回值：NVPTL_OK表示成功,其他表示失败
+
+28.从相机下载文件
+原型：NVPTL_RESULT nvpfm::downloadfile(std::string remotefilepath, std::string localfilepath);
+作用：从相机下载文件
+参数：localfilepath,本地文件路径,remotefilepath,相机端路径,包含文件名
+返回值：NVPTL_OK表示成功,其他表示失败
+
+29.从相机下载标定文件
+原型：NVPTL_RESULT nvpfm::downloadcalib(std::string localfilepath);
+作用：从相机下载标定文件
+参数：localfilepath,本地文件路径
+返回值：NVPTL_OK表示成功,其他表示失败
+
+30.开始上传标定文件
+原型：NVPTL_RESULT nvpfm::uploadcalibstart();
+作用：开始上传标定文件
+参数：无
+返回值：NVPTL_OK表示成功,其他表示失败
+
+31.结束上传标定文件
+原型：NVPTL_RESULT nvpfm::uploadcalibend();
+作用：结束上传标定文件
+参数：无
+返回值：NVPTL_OK表示成功,其他表示失败
+
+32.上传sensor标定文件
+原型：NVPTL_RESULT nvpfm::uploadsensorcalib(std::string localfilepath, NVPFM_IMAGE_SIZE frame_size, E_NVPFM_SENSOR_CHANNEL channel, NVPFM_CALIBRATION_SENSOR_TYPE calitype);
+作用：上传sensor标定文件,在uploadcalibstart调用成功后调用
+参数：localfilepath,标定文件本地路径,frame_size,分辨率,channel,通道号,calitype,标定sensor类型,包括内参、外参、lut等
+返回值：NVPTL_OK表示成功,其他表示失败
+
+33.上传imu标定文件
+原型：NVPTL_RESULT nvpfm::uploadimucalib(std::string localfilepath, E_NVPFM_IMU_CHANNEL channel, NVPFM_CALIBRATION_IMU_TYPE calitype);
+作用：上传imu标定文件,在uploadcalibstart调用成功后调用
+参数：localfilepath,标定文件本地路径,channel,imu通道号,calitype,标定imu类型,包括内参、外参等
+返回值：NVPTL_OK表示成功,其他表示失败
+
+34.获取深度配置
+原型：NVPTL_RESULT nvpfm::get_depth_config(s_nvpfm_app_dsp_process_static_config *depthconfig);
+作用：获取深度配置,包含去遮挡、denoise、fusion等
+参数：depthconfig,指向s_nvpfm_app_dsp_process_static_config类型指针
+返回值：NVPTL_OK表示成功,其他表示失败
+
+35.设置sensor状态
+原型：NVPTL_RESULT nvpfm::set_sensor_status(s_set_sensor_status* pdata);
+作用：设置sensor状态,
+参数：pdata,指向s_set_sensor_status类型指针,pdata->work==0表示关闭sensor数据流,pdata->work==1表示打开sensor数据流,pdata->channel表示sensor通道号
+返回值：NVPTL_OK表示成功,其他表示失败
+
+36.设置imu状态
+原型：NVPTL_RESULT nvpfm::set_imu_status(s_set_imu_status* pdata);
+作用：设置imu状态,
+参数：pdata,指向s_set_imu_status类型指针,pdata->work==0表示关闭imu数据流,pdata->work==1表示打开imu数据流
+返回值：NVPTL_OK表示成功,其他表示失败
+
+37.设置can状态
+原型：NVPTL_RESULT nvpfm::set_can_status(s_set_can_status* pdata);
+作用：设置can状态,
+参数：pdata,指向s_set_can_status类型指针,pdata->work==0表示关闭can数据流,pdata->work==1表示打开can数据流
+返回值：NVPTL_OK表示成功,其他表示失败
+
+38.获取imu内参
+原型：s_nvpfm_imu_internal_reference* nvpfm::get_imu_internalref();
+作用：获取imu内参
+参数：无
+返回值：NULL表示失败,否则表示成功
+
+39.获取imu外参
+原型：s_nvpfm_imu_external_reference* nvpfm::get_imu_externalref();
+作用：获取imu外参
+参数：无
+返回值：NULL表示失败,否则表示成功
+
+40.设置相机周期校时
+原型：NVPTL_RESULT nvpfm::set_timesynccycle(bool enable,int seconds);
+作用：设置相机周期校时,上位机会周期下发上位机时间给相机,相机收到后会调整时钟和上位机保持一致
+参数：enable,true表示启用,false表示禁用,seconds表示每隔seconds秒进行一次校时
+返回值：NULL表示失败,否则表示成功
+
+41.获取投射器信息
+原型：NVPTL_RESULT nvpfm::get_projector(s_nvpfm_get_projector* pcfg, s_nvpfm_get_projector_ret* retvalue);
+作用：获取投射器信息
+参数：pcfg,s_nvpfm_get_projector类型指针,pcfg->channel表示想要获取的投射器的通道号,retvalue,s_nvpfm_get_projector_ret类型指针,存储返回的信息
+返回值：NVPTL_OK表示成功,否则表示失败,返回NVPTL_OK时,如果retvalue->ret==0,则表示retvalue->config有效
+
+42.设置投射器信息
+原型：NVPTL_RESULT nvpfm::set_projector(s_nvpfm_set_projector* pcfg);
+作用：设置投射器信息
+参数：pcfg,s_nvpfm_set_projector类型指针,pcfg->channel表示想要设置的投射器的通道号
+返回值：NVPTL_OK表示成功,否则表示失败
+
+43.逆时针旋转数据帧90度
+原型：NVPTL_RESULT nvpfm::nv12_rotate_90_i420(NVPTL_USBHeaderDataPacket* tmppack);
+作用：逆时针旋转数据帧90度,宽高互换
+参数：tmppack,NVPTL_USBHeaderDataPacket类型指针,指向一帧数据帧,一般是rgb或者左右目
+返回值：NVPTL_OK表示成功,否则表示失败
+注意,本函数直接修改输入的帧数据,修改前NV12格式,修改后i420格式
+
+44.逆时针旋转数据帧270度
+原型：NVPTL_RESULT nvpfm::nv12_rotate_270_i420(NVPTL_USBHeaderDataPacket* tmppack);
+作用：逆时针旋转数据帧270度,宽高互换
+参数：tmppack,NVPTL_USBHeaderDataPacket类型指针,指向一帧数据帧,一般是rgb或者左右目
+返回值：NVPTL_OK表示成功,否则表示失败
+注意,本函数直接修改输入的帧数据,修改前NV12格式,修改后i420格式
+
+45.设置置信度后处理参数
+原型：NVPTL_RESULT nvpfm::set_confidence(s_nvpfm_set_confidence* pdata);
+作用：设置深度数据的置信度后处理参数,包括使能、禁用等
+参数：pdata,s_nvpfm_set_confidence类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+46.设置坏点过滤后处理参数
+原型：NVPTL_RESULT nvpfm::set_bad_filter(s_nvpfm_set_bad_filter* pdata);
+作用：设置深度数据的坏点过滤后处理参数,包括使能、禁用等
+参数：pdata,s_nvpfm_set_bad_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+47.设置飞点过滤后处理参数
+原型：NVPTL_RESULT nvpfm::set_smear_filter(s_nvpfm_set_smear_filter* pdata);
+作用：设置深度数据的飞点过滤后处理参数,包括使能、禁用等
+参数：pdata,s_nvpfm_set_smear_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+48.设置亮条过滤后处理参数
+原型：NVPTL_RESULT nvpfm::set_light_filter(s_nvpfm_set_light_filter *lightfilter);
+作用：设置深度数据的亮条过滤后处理参数,包括使能、禁用等
+参数：lightfilter,s_nvpfm_set_light_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+49.设置重复纹理过滤后处理参数
+原型：NVPTL_RESULT nvpfm::set_repeat_texture_filter(s_nvpfm_set_repeated_texture_filter *pfilter);
+作用：设置深度数据的重复纹理过滤后处理参数,包括使能、禁用等
+参数：pfilter,s_nvpfm_set_repeated_texture_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+50.设置高精度后处理参数
+原型：NVPTL_RESULT nvpfm::set_high_precision(bool on);
+作用：设置深度数据的高精度后处理参数,包括使能、禁用等
+参数：on,true表示启用高精度后处理,false表示禁用
+返回值：NVPTL_OK表示成功,否则表示失败
+
+51.获取高精度后处理参数
+原型：NVPTL_RESULT nvpfm::get_high_precision(s_nvpfm_high_precision &status);
+作用：获取深度数据的高精度后处理参数
+参数：status,s_nvpfm_high_precision类型引用
+返回值：NVPTL_OK表示成功,否则表示失败
+
+52.获取置信度后处理参数
+原型：NVPTL_RESULT nvpfm::get_confidence(s_nvpfm_confidence* pdata);
+作用：获取深度数据的置信度后处理参数
+参数：pdata,s_nvpfm_confidence类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+53.获取重复纹理过滤后处理参数
+原型：NVPTL_RESULT nvpfm::get_repeat_texture_filter(s_nvpfm_repeated_texture_filter *pfilter);
+作用：获取深度数据的重复纹理过滤后处理参数
+参数：pfilter,s_nvpfm_repeated_texture_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+54.获取亮条过滤后处理参数
+原型：NVPTL_RESULT nvpfm::get_light_filter(s_nvpfm_light_filter *plightfilter);
+作用：获取深度数据的亮条过滤后处理参数
+参数：plightfilter,s_nvpfm_light_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+55.获取坏点过滤后处理参数
+原型：NVPTL_RESULT nvpfm::get_bad_filter(s_nvpfm_bad_filter *tmpparam);
+作用：获取深度数据的坏点过滤后处理参数
+参数：tmpparam,s_nvpfm_bad_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败
+
+56.获取飞点过滤后处理参数
+原型：NVPTL_RESULT nvpfm::get_smear_filter(s_nvpfm_smear_filter *tmpparam);
+作用：获取深度数据的飞点过滤后处理参数
+参数：tmpparam,s_nvpfm_smear_filter类型指针
+返回值：NVPTL_OK表示成功,否则表示失败

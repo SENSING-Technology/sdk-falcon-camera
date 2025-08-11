@@ -1,0 +1,187 @@
+c++接口指南：
+1.概述
+包括以下主要流程:
+- 构造falcon实例
+- 配置ir/rgb分辨率、帧率
+- 相机断开连接处理
+- 获取相机内外参数
+- 开启各路数据流
+
+2.初始化sdk
+在所有api前调用，应用程序只需调用一次
+```
+nvpfm_init(NULL,0);
+```
+
+3.构造falcon实例
+falcon类负责管理某个费曼相机的连接
+```
+NVPTL_DEVICE_INFO* pdevinfo=NULL;
+int total=0;
+if(NVPTL_OK==nvptl_enum_sync(&total,&pdevinfo)){//枚举相机
+    if(total>0){
+        nvpfm* mycamera=new nvpfm(pdevinfo,NULL,NULL);//创建枚举到的第一个相机的实例
+    }
+}
+```
+以上代码会创建枚举到的第一个相机的实例
+
+4.配置ir/rgb分辨率、帧率
+修改ir/rgb分辨率、帧率，需要先获取sensor的分辨率、帧率
+注意，一旦调用set_sensorcfg修改分辨率，相机会重启，我们在4中讨论相机重启或者拔出或者异常断开时的处理
+```
+int want_irfps=30;
+NVPFM_IMAGE_SIZE want_irresolution=IMAGE_640_400;
+NVPFM_IMAGE_SIZE want_rgbresolution=IMAGE_640_400;
+
+s_nvpfm_get_sensor_config_ret mycfg;
+if (NVPTL_OK == mycamera->get_sensorcfg(&mycfg)) {
+    if (mycfg.ret == 0) {
+        printf("got sensor cfg\nir:%s %d\nrgb:%s %d\n",
+            nvpfm::framesize2str(mycfg.config.isp_frame_size[0]),
+            mycfg.config.fps[0],
+            nvpfm::framesize2str(mycfg.config.isp_frame_size[2]),
+            mycfg.config.fps[2]);
+        if(mycfg.config.isp_frame_size[0]!=want_irresolution||
+                mycfg.config.isp_frame_size[2]!=want_rgbresolution||
+                mycfg.config.fps[0]!=want_irfps){
+            printf("res or fps not as launch config,will test if can change!\n");
+            if(IMAGE_UNKNOWN!=nvpfm::findsensorresbyisp(info->devinfo,info->config.resolution,CHANNEL0)&&
+                IMAGE_UNKNOWN!=nvpfm::findsensorresbyisp(info->devinfo,info->config.rgbresolution,CHANNEL2)){
+                mycfg.config.isp_frame_size[0]=info->config.resolution;
+                mycfg.config.isp_frame_size[1]=info->config.resolution;
+                mycfg.config.isp_frame_size[2]=info->config.rgbresolution;
+
+                mycfg.config.frame_size[0]=nvpfm::findsensorresbyisp(info->devinfo,info->config.resolution,CHANNEL0);
+                mycfg.config.frame_size[1]=nvpfm::findsensorresbyisp(info->devinfo,info->config.resolution,CHANNEL1);
+                mycfg.config.frame_size[2]=nvpfm::findsensorresbyisp(info->devinfo,info->config.rgbresolution,CHANNEL2);
+
+                mycfg.config.fps[0]=info->config.fps;
+                mycfg.config.fps[1]=info->config.fps;
+                mycfg.config.fps[2]=info->config.fps;
+
+                info->fm->set_sensorcfg(&mycfg.config);
+                printf("ok to change res to:%s->%s,%d\n",
+                nvpfm::framesize2str(mycfg.config.frame_size[0]),
+                nvpfm::framesize2str(mycfg.config.isp_frame_size[0]),info->config.fps);
+            }else{
+                printf("launch config resolution not supported!\n");
+            }
+        }else{
+            printf("ok,res and fps is as launch set!\n");
+        }
+    }
+}
+```
+如上，我们配置ir和rgb分辨率为640x400,帧率为30fps
+
+5.相机断开连接处理
+相机可能因为异常或者修改配置如分辨率等发生重启或者被拔出，这时候应用代码需要处理，及时析构释放资源
+在创建nvpfm实例时，需要传入事件回调函数指针，如下：
+```
+void *releasethread(void *userdata)
+{
+  nvpfm *info = (nvpfm *)userdata; 
+  printf("delete nvpfm!\n");
+  delete info;
+  return 0;
+}
+
+void eventcallback(EVENTREASON reason,void *userdata)
+{
+    nvpfm *info = *(nvpfm**)userdata;
+    if (reason == INFORMREBOOT) {
+		printf("will send reboot to camera!\n");
+		info->fm->send_reboot();
+		printf("after send reboot to camera!\n");
+	}
+	else {
+		printf("plugout!\n");
+	}
+
+	pthread_t releasethreadid;
+	pthread_create(&releasethreadid, NULL, releasethread, info);
+	pthread_detach(releasethreadid);
+}
+.....
+.....
+
+NVPTL_DEVICE_INFO* pdevinfo=NULL;
+int total=0;
+if(NVPTL_OK==nvptl_enum_sync(&total,&pdevinfo)){//枚举相机
+    if(total>0){
+        nvpfm* mycamera=NULL;
+        mycamera=new nvpfm(pdevinfo,eventcallback,(void*)&mycamera);//创建枚举到的第一个相机的实例
+    }
+}
+```
+6.获取相机内外参数
+```
+s_nvpfm_camera_param param;
+if(NVPTL_OK==fm->get_camera_param(&param))
+{
+    printf("got camera param!!!!\n");
+}
+else
+{
+    printf("fail to get camera param!\n");
+}
+```
+以上代码可以获取相机参数，包括相机内外参，一般点云计算等需要左相机的焦距和光心坐标，其他参数都有各自的用途，比如rgb对齐深度数据需要rgb的外参
+参考s_nvpfm_camera_param的定义，见nvpfm.h
+
+7.开启各路数据流
+```
+fm.start_leftir(leftircallback);
+fm.start_rightir(rightircallback);
+fm.start_depth(depthcallback);
+fm.start_rgb(rgbcallback);
+fm.start_other(othercallback);
+```
+以上代码可以开启左右红外相机数据流，深度数据流，rgb相机数据流，其他数据流(包含相机日志消息/ai模型推理结果等)
+leftircallback/rightircallback/depthcallback/rgbcallback/othercallback都是原型为 typedef void(*FRAMECALLBACK)(void *data, void *userdata);的回调函数
+其中，data是指向一帧数据的指针，userdata是new nvpfm时传入的userdata指针
+
+可以在回调函数中计算帧率/保存深度数据等:
+```
+void depthcallback(void *data, void *userdata)
+{
+    NVPFM_USBHeaderDataPacket *tmppack = (NVPFM_USBHeaderDataPacket *)data;
+    static unsigned int frames = 0;
+    static unsigned int lastframe = 0;
+    static time_t lasttime = 0; // time(NULL);
+
+    time_t current = time(NULL);
+    if (0 == lasttime)
+        lasttime = current;
+    if ((current - lasttime) > 2)
+    {
+        double framerate = (double)(frames - lastframe) / (double)(current - lasttime);
+
+        if (printfps)
+            printf("depth,res:%dx%d,fps:%f\n",
+                ((NVPFM_USB_IMAGE_HEADER *)((unsigned char *)tmppack + sizeof(NVPFM_USBHeaderDataPacket)))->width,
+                ((NVPFM_USB_IMAGE_HEADER *)((unsigned char *)tmppack + sizeof(NVPFM_USBHeaderDataPacket)))->height,
+                framerate);
+        lasttime = time(NULL);
+        lastframe = frames;
+    }
+    frames++;
+    if(g_savedepth){//此处可以保存深度数据
+        unsigned char* pdata=(unsigned char*)tmppack+sizeof(NVPFM_USBHeaderDataPacket)+sizeof(NVPFM_USB_IMAGE_HEADER);	
+        int width=((NVPFM_USB_IMAGE_HEADER *)((unsigned char *)tmppack + sizeof(NVPFM_USBHeaderDataPacket)))->width;
+        int height=((NVPFM_USB_IMAGE_HEADER *)((unsigned char *)tmppack + sizeof(NVPFM_USBHeaderDataPacket)))->height;
+        char tmpfilename[64];
+        sprintf(tmpfilename,"depth-%ld.raw",time(NULL)); 
+        FILE *fp;
+        fp = fopen(tmpfilename, "wb");
+        fwrite(pdata, width*height*2, 1, fp);
+        fclose(fp);
+        g_savedepth=false;
+    }
+}
+```
+rgbcallback/leftircallback/rightircallback中类似
+需要注意的是各种数据流中像素大小：depth中16bit(无符号整数，表示距离，单位mm),rgb中12bit(nv12格式）,leftir/rightir中8bit(8bit灰度值）
+
+更多接口的使用可以参考example/cpp.cpp
