@@ -43,19 +43,19 @@ cmake ../
 make -j8
 ```
 
-编译完成后，你将在 buid 目录下看到模块文件:
+编译完成后，您将在 build 目录下看到模块文件:
 
 ```shell
 falcon_sdk.cpython-${PY_VER}${PLATFORM}.so
 ```
 
-该文件可以被 python3 导入使用了,如果发布给客户，请保证面向的 Python 版本一致，建议客户参考本文档自行构建，或者 nvp 提供构建脚本
+该文件可以被 python3 导入使用。请保证面向的 Python 版本一致，建议参考本文档自行构建，或者我们提供构建脚本
 
 生成 stub：
 
 1. 安装 mypy 模块
    `sudo apt install mypy`
-2. 在 build 目录下执行 stubgen 命令, 生成 falcon_stk 的 pyi
+2. 在 build 目录下执行 stubgen 命令，生成 falcon_sdk 的 pyi
    `stubgen --module falcon_sdk`
 
 3. falcon_sdk.pyi 和对应的 so 文件应当一起发布、使用，后续接口文档不再维护，用户直接参考 pyi 即可
@@ -69,52 +69,52 @@ falcon_sdk.cpython-${PY_VER}${PLATFORM}.so
 如图，SDK 的主要工作过程为:
 
 1. 初始化
-   - 初始化 log 路径和 size, 启动 sdk
+   - 初始化 log 路径和大小，启动 SDK
 2. 创建枚举线程
    - 一般来说也可以在主线程中枚举，但在主线程枚举后，用户业务需要在其他线程处理
    * 枚举线程主要任务为发现设备，并管理设备，同时创建设备线程，执行设备有关的初始化
 3. 设备线程注册业务回调以获取设备有关信息，该回调函数是在 SDK 线程中调用的
 
-对于 C/C++ sdk，客户可以定制回调函数以进行数据管理，对于 Python SDK，由于存在 GIL 问题，不能在 SDK 线程中调用用户的 Python 代码，因此 Python SDK 封装代码自己注册了若干业务回调函数，并将回调函数中获取的数据，在主线程中，以指定的格式返回
+对于 C/C++ SDK，用户可以定制回调函数以进行数据管理。对于 Python SDK，由于存在 GIL 问题，不能在 SDK 线程中调用用户的 Python 代码，因此 Python SDK 封装代码自己注册了若干业务回调函数，并将回调函数中获取的数据，在主线程中，以指定的格式返回
 
-为了方便用户使用，Python SDK 不会完全占用用户的主线程（Python interpreter 所在线程），客户可以调用指定函数获取数据，详见后文的接口说明
+为了方便用户使用，Python SDK 不会完全占用用户的主线程（Python interpreter 所在线程），用户可以调用指定函数获取数据，详见后文的接口说明
 
 #### 2.2. 接口说明
 
 请参考接口说明文档
 
-### 3、 示例
+### 3、示例
 
-see build/demo.py
-安装sympy
+请参考 build/demo.py
+安装 sympy：
 ```
 pip install sympy
 ```
-测试时，请进入build目录执行:
+测试时，请进入 build 目录执行：
 ```Python
 python3 demo.py
 ```
 
-### 4、 api 文档生成指南
+### 4、API 文档生成指南
 
-使用 sphinx 生成 html 文档，文档内容由 pybind/falcon_sdk.py 的内容确定。
+使用 Sphinx 生成 HTML 文档，文档内容由 pybind/falcon_sdk.py 的内容确定。
 
 ```bash
 cd doc_py
 make singlehtml
 ```
 
-该命令会在 doc_py/build/singlehtml 目录下生成相关文件，用浏览器打开 index.html 即可查看文档，可以使用 print 将文档打印成 pdf
+该命令会在 doc_py/build/singlehtml 目录下生成相关文件，用浏览器打开 index.html 即可查看文档，可以使用浏览器的打印功能将文档保存为 PDF
 
-_note:如果需要自动生成 pdf 文档，请联系我们_
+_注意：如果需要自动生成 PDF 文档，请联系我们_
 
-### 5、python api 测试
+### 5、Python API 测试
 
-1. 我们提供了测试需要的 requirements.txt, 以及环境设置的脚本，用户可以再 scripts 目录下执行 setup.sh 以设置环境, 一般来说，如果这个脚本没问题，你就不需要手动执行前面那些命令
+1. 我们提供了测试需要的 requirements.txt，以及环境设置的脚本，用户可以在 scripts 目录下执行 setup.sh 以设置环境。一般来说，如果这个脚本执行成功，您就不需要手动执行前面那些命令
 
 ```bash
 cd scripts
-# 因为需要从github clone, 此步骤可能会失败, 需要多试几次
+# 因为需要从 GitHub clone，此步骤可能会失败，需要多试几次
 ./setup.sh
 ```
 
@@ -134,10 +134,10 @@ cd build
 cat report.json
 ```
 
-report.json 中你可以看到测试结果， 其中包含了执行了那些 case，是否通过，执行了多久等等，当某个 case fail 时，这些信息对于复现问题十分重要
+report.json 中您可以看到测试结果，其中包含了执行了哪些测试用例、是否通过、执行了多久等等。当某个测试用例失败时，这些信息对于复现问题十分重要。
 关于 report.json 的示例使用，可以参考 scripts/analyze_report.py
 
-示例 report
+示例报告：
 
 ```json
 {
