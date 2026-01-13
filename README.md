@@ -53,6 +53,11 @@ falcon_sdk.cpython-${PY_VER}${PLATFORM}.so
 
 生成 stub：
 
+修改rules.d
+```
+sudo cp nextvpu-usb.rules /etc/udev/rules.d
+```
+
 1. 安装 mypy 模块
    `sudo apt install mypy`
 2. 在 build 目录下执行 stubgen 命令，生成 falcon_sdk 的 pyi
@@ -85,13 +90,24 @@ falcon_sdk.cpython-${PY_VER}${PLATFORM}.so
 
 ### 3、示例
 
+
+1. 确保已修改rules.d
+```
+sudo cp nextvpu-usb.rules /etc/udev/rules.d
+```
+
+2. 插入相机
+
+3. 运行示例
 请参考 build/demo.py
 安装 sympy：
 ```
 pip install sympy
 ```
+
 测试时，请进入 build 目录执行：
 ```Python
+cd  sdk-falcon-camera/build
 python3 demo.py
 ```
 

@@ -1,4 +1,4 @@
-build
+build/*
 !build/falcon_sdk.pyi
 !build/demo.py
 !build/falcon_test.py
